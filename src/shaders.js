@@ -59,7 +59,9 @@ fn caus(uv:vec2f,t:f32)->f32{let p=uv*6.2831853;var i=p;var c=0.;
  for(var n=1;n<=5;n++){let tt=t*(1.-3.5/f32(n));i=p+vec2f(cos(tt-i.x)+sin(tt+i.y),sin(tt-i.y)+cos(tt+i.x));let s=sin(i.x+tt);let k=cos(i.y+tt);c+=abs(s*k)/(1.25*sqrt(s*s+k*k)+1e-4);}
  c=1.17-pow(c/5.,1.4);return pow(abs(c),8.);}
 @fragment fn fs(@builtin(position)fc:vec4f)->@location(0)vec4f{
- let uv=fc.xy/${WATER}.;let t=tm.x;let c=caus(uv,t*.45+23.);
+ let uv=fc.xy/${WATER}.;let t=tm.x;
+ let wpu=uv+.035*vec2f(sin(uv.y*9.3+t*.3)+.5*sin(uv.y*23.7),cos(uv.x*7.7-t*.2)+.5*cos(uv.x*19.1));
+ let c=caus(wpu,t*.45+23.);
  let wu=uv+.02*vec2f(sin(6.2831853*(uv.y*2.+.1*t)),cos(6.2831853*(uv.x*3.-.07*t)));
  var s=vec2f(0.);
  for(var i=0;i<10;i++){let k=vec3f(f32(i+1),f32((i*7)%5+1),.5/f32(i+1));s+=k.xy*k.z*cos(dot(k.xy,wu)*6.2831853+t*(.5+.35*sqrt(length(k.xy)))+f32(i)*1.7);}
@@ -71,6 +73,15 @@ const W_BLIT = W_FS + /*wgsl*/`
 @group(0)@binding(1)var s:sampler;
 fn uvOf(fc:vec4f,k:f32)->vec2f{return fc.xy*k/vec2f(textureDimensions(t));}
 @fragment fn fsMip(@builtin(position)fc:vec4f)->@location(0)vec4f{return textureSampleLevel(t,s,uvOf(fc,2.),0.);}
+fn kar(c:vec3f)->vec4f{let w=1./(1.+max(c.r,max(c.g,c.b)));return vec4f(c*w,w);}
+@fragment fn fsDown0(@builtin(position)fc:vec4f)->@location(0)vec4f{let uv=uvOf(fc,2.);let e=1./vec2f(textureDimensions(t));
+ let a=kar(min(textureSampleLevel(t,s,uv+e*vec2f(-1,-1),0.).rgb,vec3f(24.)));let b=kar(min(textureSampleLevel(t,s,uv+e*vec2f(1,-1),0.).rgb,vec3f(24.)));
+ let c=kar(min(textureSampleLevel(t,s,uv+e*vec2f(-1,1),0.).rgb,vec3f(24.)));let d=kar(min(textureSampleLevel(t,s,uv+e*vec2f(1,1),0.).rgb,vec3f(24.)));
+ let m=a+b+c+d;return vec4f(m.rgb/m.a,1.);}
+@fragment fn fsDown(@builtin(position)fc:vec4f)->@location(0)vec4f{let uv=uvOf(fc,2.);let e=1./vec2f(textureDimensions(t));
+ return (textureSampleLevel(t,s,uv+e*vec2f(-1,-1),0.)+textureSampleLevel(t,s,uv+e*vec2f(1,-1),0.)+textureSampleLevel(t,s,uv+e*vec2f(-1,1),0.)+textureSampleLevel(t,s,uv+e*vec2f(1,1),0.))*.25;}
+@fragment fn fsUp(@builtin(position)fc:vec4f)->@location(0)vec4f{let uv=uvOf(fc,.5);let e=.75/vec2f(textureDimensions(t));
+ return (textureSampleLevel(t,s,uv+e*vec2f(-1,-1),0.)+textureSampleLevel(t,s,uv+e*vec2f(1,-1),0.)+textureSampleLevel(t,s,uv+e*vec2f(-1,1),0.)+textureSampleLevel(t,s,uv+e*vec2f(1,1),0.))*.25;}
 `;
 
 const S_G = /*wgsl*/`
@@ -115,7 +126,7 @@ fn caus(p:vec3f,d:f32)->vec3f{let q=cuv(p);let o=vec2f(.004,.0025);
 fn sunE(y:f32,z:f32)->vec3f{return SUNC*exp(kd(z)*(min(y,0.)/g.sun.y))*(.5+.5*sat(-y/30.));}
 fn vol(p:vec3f)->vec4f{return textureSampleLevel(tV,sC,(p-vec3f(-192.,-56.,-192.))/vec3f(384.,60.,384.),0.);}
 fn amb(p:vec3f,n:vec3f,sky:f32,z:f32)->vec3f{let up=n.y*.5+.5;
- return mix(vec3f(.22,.60,.80),vec3f(.34,.56,.82),z)*exp(kd(z)*min(p.y,0.)*1.2)*(.3+.7*sky)*(.24+.76*up*up)*1.3*(.55+.45*sat(-p.y/30.))+vec3f(.003,.010,.016);}
+ return mix(vec3f(.22,.60,.80),vec3f(.34,.56,.82),z)*exp(kd(z)*min(p.y,0.)*1.2)*(.3+.7*sky)*(.24+.76*up*up)*1.8*(.55+.45*sat(-p.y/30.))+vec3f(.04,.10,.16);}
 fn fog(c:vec3f,wp:vec3f,z:f32)->vec3f{let v=wp-g.cam.xyz;let d=length(v);let rd=v/d;
  return c*exp(-sg(z)*d)*sss(230.,185.,d)+fogIn(g.cam.xyz,rd,d,z,g.sun.xyz)*(.58+.42*vol(g.cam.xyz+rd*min(d,150.)).g);}
 fn qrot(q:vec4f,v:vec3f)->vec3f{return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
@@ -129,8 +140,10 @@ struct VO{@builtin(position)cp:vec4f,@location(0)wp:vec3f,@location(1)n:vec3f,@l
 @fragment fn fs(i:VO,@builtin(front_facing)ff:bool)->@location(0)vec4f{
  let on=normalize(i.n)*select(-1.,1.,ff);
  let dist=length(i.wp-g.cam.xyz);
- let d1=textureSample(tD,sR,i.op.zy*.1);let d2=textureSample(tD,sR,i.op.xz*.1);let d3=textureSample(tD,sR,i.op.xy*.1);
- let hgt=(d1.b+d2.b+d3.b)/3.;let mot=(d1.a+d2.a+d3.a)/3.;
+ let wp=i.op+.35*vec3f(sin(i.op.y*1.7+i.op.z*1.3),sin(i.op.x*1.9+i.op.y*1.1),sin(i.op.z*1.5+i.op.x*1.2));
+ var tw=pow(abs(on),vec3f(4.));tw/=(tw.x+tw.y+tw.z);
+ let d1=textureSample(tD,sR,wp.zy*.1);let d2=textureSample(tD,sR,wp.xz*.1);let d3=textureSample(tD,sR,wp.xy*.1);
+ let hgt=d1.b*tw.x+d2.b*tw.y+d3.b*tw.z;let mot=d1.a*tw.x+d2.a*tw.y+d3.a*tw.z;
  let st=i.op.y*.55+hgt*1.6;let bed=hs(floor(st));
  var alb=mix(vec3f(.11,.12,.13),vec3f(.33,.30,.25),sat(mot*1.5-.25));
  alb=mix(alb,mix(vec3f(.26,.19,.10),vec3f(.20,.22,.14),bed),sss(.42,.66,mot)*.7);
@@ -146,8 +159,9 @@ struct VO{@builtin(position)cp:vec4f,@location(0)wp:vec3f,@location(1)n:vec3f,@l
  let ndl=sat(dot(N,L));
  let ca=caus(i.wp,dist);
  let am=amb(i.wp,N,v1.g,0.)*ao;
- let dl=E*ndl*(.10+mix(vec3f(.33),ca,sss(.1,.45,dot(on,L)))*2.5);
+ let dl=E*ndl*(.10+mix(vec3f(.33),ca,sss(.1,.45,dot(on,L)))*1.8);
  var c=alb*(dl+am);
+ c+=alb*vec3f(.02,.05,.07);
  let H=normalize(V+L);
  c+=E*(.25+ca)*pow(sat(dot(N,H)),20.)*.15*ndl;
  return fin(fog(c,i.wp,0.));}
@@ -161,7 +175,7 @@ struct VO{@builtin(position)cp:vec4f,@location(0)wp:vec3f,@location(1)n:vec3f,@l
 @fragment fn fs(i:VO)->@location(0)vec4f{
  let n=normalize(i.n);let dist=length(i.wp-g.cam.xyz);
  let base=vec3f(.02,.05,.06);
- let emi=vec3f(.40,1.0,.50)*i.gl*4.0*(.7+.3*sin(g.cam.w*1.5+i.wp.x*2.));
+ let emi=vec3f(.40,1.0,.50)*i.gl*6.0*(.7+.3*sin(g.cam.w*1.5+i.wp.x*2.));
  let E=sunE(i.wp.y,0.)*shadow1(i.wp);
  var c=base*(E*.4+amb(i.wp,n,vol(i.wp).g,0.))+emi;
  return fin(fog(c,i.wp,0.));}
@@ -214,19 +228,76 @@ struct VO{@builtin(position)cp:vec4f,@location(0)wp:vec3f};
  return fin(fog(c,i.wp,0.));}
 @vertex fn vsB(@builtin(vertex_index)i:u32)->VO{var o:VO;let p=vec2f(f32(i&1u),f32(i>>1u))*2.-1.;
  o.wp=g.cam.xyz+g.fwd.xyz+g.right.xyz*(p.x*g.right.w)+g.up.xyz*(p.y*g.up.w);o.cp=vec4f(p,1e-7,1.);return o;}
-@fragment fn fsB(i:VO)->@location(0)vec4f{let p=g.cam.xyz+normalize(i.wp-g.cam.xyz)*240.;return fin(fog(vec3f(0.),p,0.));}
+@fragment fn fsB(i:VO)->@location(0)vec4f{let p=g.cam.xyz+normalize(i.wp-g.cam.xyz)*300.;return fin(fog(vec3f(0.),p,0.));}
 `;
 
+const W_RAYS = S_G + W_FS + /*wgsl*/`
+@group(0)@binding(0)var<uniform> g:G;
+@group(0)@binding(1)var sR:sampler;
+@group(0)@binding(2)var sS:sampler_comparison;
+@group(0)@binding(3)var tSh:texture_depth_2d;
+@group(0)@binding(4)var tW:texture_2d<f32>;
+@group(0)@binding(5)var tDp:texture_depth${AA > 1 ? '_multisampled' : ''}_2d;
+@group(0)@binding(6)var tV:texture_3d<f32>;
+@group(0)@binding(7)var sC:sampler;
+@fragment fn fs(@builtin(position)fc:vec4f)->@location(0)vec4f{
+ let dp=textureLoad(tDp,vec2i(fc.xy)*2,0);
+ let uv=fc.xy*2.*g.res.zw;
+ let nd=vec2f(uv.x*2.-1.,1.-uv.y*2.);
+ let rv=g.fwd.xyz+g.right.xyz*(nd.x*g.right.w)+g.up.xyz*(nd.y*g.up.w);
+ let rl=length(rv);let rd=rv/rl;
+ let zl=g.fwd.w/max(dp,1e-6);
+ var tm=min(zl*rl,120.);
+ if(rd.y>1e-4){tm=min(tm,-g.cam.y/rd.y);}
+ let ro=g.cam.xyz;let sx=g.sun.xyz;let k=kd(0.);let sgz=sg(0.);
+ let dt=tm/${RAYN}.;let j=ign(fc.xy);
+ var acc=vec3f(0.);
+ for(var n=0;n<${RAYN};n++){let t=(f32(n)+j)*dt;let p=ro+rd*t;
+  let s=g.sm*vec4f(p,1.);
+  let vis=textureSampleCompareLevel(tSh,sS,vec2f(s.x*.5+.5,.5-s.y*.5),s.z-.0006);
+  let q=p.xz-sx.xz*(p.y/sx.y);
+  let pat=sss(.3,.7,textureSampleLevel(tW,sR,q/27.,2.5).r)*sss(.15,.6,textureSampleLevel(tW,sR,q.yx/11.+.3,2.).r);
+  let o=textureSampleLevel(tV,sC,(p-vec3f(-192.,-56.,-192.))/vec3f(384.,60.,384.),0.).r;
+  let mist=sat(1.-(o-.5)*3.4);
+  acc+=exp(-sgz*t+k*(p.y/sx.y))*(vis*(.012+pat*6.)*(1.+1.2*mist*mist));}
+ let mu=max(dot(rd,sx),0.);let ph=mix(.2+2.*mu*mu*mu,.8,0.);
+ let wc=WCOL+vec3f(.04,.07,.05);
+ return vec4f(min(acc*dt*sgz*wc*SUNC*ph*g.mis.y,vec3f(20.)),zl);}
+`;
+const W_RBLUR = W_FS + /*wgsl*/`
+@group(0)@binding(0)var tR:texture_2d<f32>;
+@fragment fn fs(@builtin(position)fc:vec4f)->@location(0)vec4f{
+ let p=vec2i(fc.xy);let mx=vec2i(textureDimensions(tR))-1;
+ let c=textureLoad(tR,p,0);var acc=vec3f(0.);var ws=0.;
+ for(var y=-1;y<=1;y++){for(var x=-1;x<=1;x++){let r=textureLoad(tR,clamp(p+vec2i(x,y),vec2i(0),mx),0);
+  let w=1./(.03+abs(r.a-c.a)/max(c.a,1e-4));acc+=r.rgb*w;ws+=w;}}
+ return vec4f(acc/ws,c.a);}
+`;
 const W_POST = S_G + W_FS + /*wgsl*/`
 @group(0)@binding(0)var<uniform> g:G;
+@group(0)@binding(1)var sC:sampler;
 @group(0)@binding(2)var tS:texture_2d<f32>;
+@group(0)@binding(3)var tR:texture_2d<f32>;
+@group(0)@binding(4)var tB:texture_2d<f32>;
+@group(0)@binding(5)var tDp:texture_depth${AA > 1 ? '_multisampled' : ''}_2d;
 fn tmap(x:vec3f)->vec3f{return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),vec3f(0.),vec3f(1.));}
 @fragment fn fs(@builtin(position)fc:vec4f)->@location(0)vec4f{
- let uv=fc.xy*g.res.zw;
- var c=textureLoad(tS,vec2i(fc.xy),0).rgb;
+ let px=vec2i(fc.xy);let uv=fc.xy*g.res.zw;
+ let zf=g.fwd.w/max(textureLoad(tDp,px,0),1e-6);
+ let h=fc.xy*.5-.5;let b=floor(h);let f=h-b;let bi=vec2i(b);
+ let mx=vec2i(textureDimensions(tR))-1;
+ var acc=vec3f(0.);var ws=0.;
+ for(var k=0;k<4;k++){let o=vec2i(k&1,k>>1);let r=textureLoad(tR,clamp(bi+o,vec2i(0),mx),0);
+  let bw=mix(1.-f.x,f.x,f32(o.x))*mix(1.-f.y,f.y,f32(o.y));
+  let w=(bw+.02)/(.02+abs(r.a-zf)/max(zf,1e-4));acc+=r.rgb*w;ws+=w;}
+ var c=textureLoad(tS,px,0).rgb+acc/ws;
+ let bl=textureSampleLevel(tB,sC,uv,0.).rgb;
+ c=mix(c,bl,.06)+bl*.03;
  c*=g.mis.x;
  let q=uv-.5;c*=1.-dot(q,q)*.55;
  c=tmap(c);
+ let l0=dot(c,vec3f(.2126,.7152,.0722));let l=mix(l0,l0*l0*(3.-2.*l0),.55);c*=l/max(l0,1e-4);
+ c=mix(c,vec3f(l),sss(.55,1.,l)*.1);c=mix(vec3f(l),c,.93)+vec3f(.008,.002,0.);
  c=pow(max(c,vec3f(0.)),vec3f(1./2.2));
  let n=ign(fc.xy)+ign(fc.xy+37.)-1.;
  return vec4f(c+n/255.,1.);}

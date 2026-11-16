@@ -15,7 +15,7 @@ const GLYPHS = [
 ];
 // sample pebble positions along strokes; returns flat ibGlyph records (8 floats each)
 function layInscription(getH, centers, out) {
-  const GW = 1.2, GH = 1.5, STEP = 0.08;
+  const GW = 1.2, GH = 1.5, STEP = 0.06;
   for (const c of centers) {
     for (let g = 0; g < GLYPHS.length; g++) {
       for (const poly of GLYPHS[g]) {
@@ -27,7 +27,7 @@ function layInscription(getH, centers, out) {
             const t = i / n, x = mix(a[0], b[0], t), y = mix(a[1], b[1], t);
             const wx = c[0] - (g * GW + x * 1.0), wz = c[1] - y * 1.5 + (rnd() - .5) * .1;
             const wy = getH(wx, wz) + 0.12;
-            out.push(wx, wy, wz, rr(.12, .18), g, t, rnd(), 1);
+            out.push(wx, wy, wz, rr(.14, .2), g, t, rnd(), 1);
           }
         }
       }

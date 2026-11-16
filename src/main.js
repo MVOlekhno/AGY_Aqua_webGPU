@@ -48,8 +48,8 @@ const pl0 = device.createPipelineLayout({ bindGroupLayouts: [bgl0] });
 const bglBlit = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: SS.FRAGMENT, texture: {} }, { binding: 1, visibility: SS.FRAGMENT, sampler: {} }] });
 const plBlit = device.createPipelineLayout({ bindGroupLayouts: [bglBlit] });
 const mBlit = mod(W_BLIT);
-const blitPipe = (e, f) => device.createRenderPipeline({ layout: plBlit, vertex: { module: mBlit, entryPoint: 'vs' }, fragment: { module: mBlit, entryPoint: e, targets: [{ format: f }] } });
-const pMip8 = blitPipe('fsMip', 'rgba8unorm'), pMip16 = blitPipe('fsMip', HDR);
+const blitPipe = (e, f, add) => device.createRenderPipeline({ layout: plBlit, vertex: { module: mBlit, entryPoint: 'vs' }, fragment: { module: mBlit, entryPoint: e, targets: [{ format: f, blend: add ? { color: { srcFactor: 'one', dstFactor: 'one' }, alpha: { srcFactor: 'one', dstFactor: 'one' } } : undefined }] } });
+const pMip8 = blitPipe('fsMip', 'rgba8unorm'), pMip16 = blitPipe('fsMip', HDR), pDown0 = blitPipe('fsDown0', HDR), pDown = blitPipe('fsDown', HDR), pUp = blitPipe('fsUp', HDR, true);
 const blitBG = (v) => device.createBindGroup({ layout: bglBlit, entries: [{ binding: 0, resource: v }, { binding: 1, resource: sClamp }] });
 const colorAtt = (v, c) => ({ view: v, loadOp: c ? 'clear' : 'load', storeOp: 'store', clearValue: [0, 0, 0, 0] });
 
@@ -58,15 +58,15 @@ const vbSolid = { arrayStride: 16, attributes: [A(0, 0, 'float32x3'), A(1, 12, '
 const ibSolid = { arrayStride: 48, stepMode: 'instance', attributes: [A(2, 0, 'float32x4'), A(3, 16, 'float32x4'), A(4, 32, 'float32x4')] };
 const ibWhale = { arrayStride: 48, stepMode: 'instance', attributes: [A(2, 0, 'float32x4'), A(3, 16, 'float32x4'), A(4, 32, 'float32x4')] };
 const ibGlyph = { arrayStride: 32, stepMode: 'instance', attributes: [A(2, 0, 'float32x4'), A(3, 16, 'float32x4')] };
-const scenePipe = (m, vsE, fsE, buffers, o = {}) => device.createRenderPipeline({ layout: pl0, vertex: { module: m, entryPoint: vsE, buffers }, fragment: { module: m, entryPoint: fsE, targets: [{ format: HDR }] }, primitive: { topology: o.strip ? 'triangle-strip' : 'triangle-list', cullMode: o.cull || 'none' }, depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'greater' }, multisample: { count: AA } });
+const scenePipe = (m, vsE, fsE, buffers, o = {}) => device.createRenderPipeline({ layout: pl0, vertex: { module: m, entryPoint: vsE, buffers }, fragment: { module: m, entryPoint: fsE, targets: [{ format: HDR }] }, primitive: { topology: o.strip ? 'triangle-strip' : 'triangle-list', cullMode: o.cull || 'none' }, depthStencil: { format: DEPTH, depthWriteEnabled: o.dw !== false, depthCompare: 'greater' }, multisample: { count: AA } });
 const shadowPipe = (m, vsE, buffers, o = {}) => device.createRenderPipeline({ layout: pl0, vertex: { module: m, entryPoint: vsE, buffers }, primitive: { topology: 'triangle-list', cullMode: o.cull || 'none' }, depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less', depthBias: 2, depthBiasSlopeScale: 1.5 } });
 
 await say('Compiling shaders…', 0.05, 300);
 const mSolid = mod(W_SOLID), mWhale = mod(W_WHALE), mGlyph = mod(W_GLYPH), mSurf = mod(W_SURF);
-const pTerrain = scenePipe(mSolid, 'vs', 'fs', [vbSolid, ibSolid], { cull: 'back' });
+const pTerrain = scenePipe(mSolid, 'vs', 'fs', [vbSolid, ibSolid], { cull: 'none' });
 const pWhale = scenePipe(mWhale, 'vs', 'fs', [vbSolid, ibWhale]);
 const pGlyph = scenePipe(mGlyph, 'vs', 'fs', [vbSolid, ibGlyph]);
-const pSurf = scenePipe(mSurf, 'vs', 'fs', [], { strip: true }), pBack = scenePipe(mSurf, 'vsB', 'fsB', [], { strip: true });
+const pSurf = scenePipe(mSurf, 'vs', 'fs', [], { strip: true }), pBack = scenePipe(mSurf, 'vsB', 'fsB', [], { strip: true, dw: false });
 const pTerrSh = shadowPipe(mSolid, 'vs', [vbSolid, ibSolid], { cull: 'front' });
 const mWater = mod(W_WATER);
 const pWater = device.createRenderPipeline({ layout: 'auto', vertex: { module: mWater, entryPoint: 'vs' }, fragment: { module: mWater, entryPoint: 'fs', targets: [{ format: HDR }] } });
@@ -76,6 +76,9 @@ const waterBG = waterViews.map(v => blitBG(v));
 const waterPass = waterViews.map(v => ({ colorAttachments: [colorAtt(v, true)] }));
 const mPost = mod(W_POST);
 const pPost = device.createRenderPipeline({ layout: 'auto', vertex: { module: mPost, entryPoint: 'vs' }, fragment: { module: mPost, entryPoint: 'fs', targets: [{ format: FMT }] } });
+const mRays = mod(W_RAYS), mRB = mod(W_RBLUR);
+const pRays = device.createRenderPipeline({ layout: 'auto', vertex: { module: mRays, entryPoint: 'vs' }, fragment: { module: mRays, entryPoint: 'fs', targets: [{ format: HDR }] } });
+const pRB = device.createRenderPipeline({ layout: 'auto', vertex: { module: mRB, entryPoint: 'vs' }, fragment: { module: mRB, entryPoint: 'fs', targets: [{ format: HDR }] } });
 
 const SUN = (() => { const v = [0.27, 1, -0.24], l = hypot(...v); return v.map(c => c / l); })();
 {
@@ -153,19 +156,19 @@ function flyAt() { let s = F[FLT] / FLYT; s = s < 0 ? 0 : s > 1 ? 1 : s; s = s *
 await say('Growing the garden…', 0.73, 2500);
 const Wd = makeWorld(D, T);
 for (const p of POSES) { p[1] += Wd.gy(p[0], p[2]) + (p[0] === p[3] && p[2] === p[5] ? 14 : 8); p[4] += Wd.gy(p[3], p[5]) + 0.5; }
-POSES[4] = [40, -18, -2, 34, -25, -20];
+POSES[4] = [-28, -18, -2, -34, -25, -20];
 Wd.gy = T.smp = null;
 
 await say('Building set pieces…', 0.94, 1200);
-const whaleM = meshWhale(), shellM = meshShell();
-const meshes = [whaleM, shellM];
+const whaleM = meshWhale(), shellM = meshShell(), plaqueM = Wd.plaqueMesh;
+const meshes = [whaleM, shellM, plaqueM];
 let nV = 0, nI = 0; for (const m of meshes) { m.v0 = nV; m.i0 = nI; nV += m.nv; nI += m.ib.length; }
 const allV = new Uint8Array(nV * 16), allI = new Uint32Array(nI);
 for (const m of meshes) { allV.set(new Uint8Array(m.vb), m.v0 * 16); allI.set(m.ib, m.i0); }
 const vbMesh = buf(allV, BU.VERTEX), ibMesh = buf(allI, BU.INDEX);
 const vbTerrain = buf(new Uint8Array(T.vb), BU.VERTEX), ibTerrain = buf(T.ib, BU.INDEX);
 const ibSolids = buf(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0]), BU.VERTEX);
-const ibWhaleB = buf(Wd.whales, BU.VERTEX), ibGlyphB = buf(Wd.glyphs, BU.VERTEX);
+const ibWhaleB = buf(Wd.whales, BU.VERTEX), ibGlyphB = buf(Wd.glyphs, BU.VERTEX), ibPlaqueB = buf(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0]), BU.VERTEX);
 const nWhale = Wd.whales.length / 12, nGlyph = Wd.glyphs.length / 8;
 Q.writeTexture({ texture: tVol }, Wd.volD, { bytesPerRow: NX, rowsPerImage: NY / 2 }, [NX / 2, NY / 2, NZ / 2]);
 Q.writeTexture({ texture: tMap }, Wd.gm, { bytesPerRow: 2048 }, [512, 512]);
@@ -191,7 +194,8 @@ Q.writeTexture({ texture: tHeight }, Wd.height, { bytesPerRow: 2048 }, [512, 512
 
 const PIXMAX = 2560 * 1440, PIXMIN = mob ? 25e4 : 5e5, DETMIN = 0.4;
 let W = 0, H = 0, DW = 0, DH = 0, pix = +SV[1] || (LV > 1 ? 41e4 : mob ? 1280 * 720 : PIXMAX), det = +SV[2] || 1, dynN = 0, dynT = 0, dynG = 0, dynGN = 0;
-let passScene, passPost, bgPost, targets = [];
+let passScene, passPost, bgPost, passRays, passBlur, bgBlur, bgRays, bloomPass = [], bloomBG = [], targets = [];
+const NB = 6;
 function resize() {
   DW = max(2, round(canvas.clientWidth * devicePixelRatio)); DH = max(2, round(canvas.clientHeight * devicePixelRatio));
   const s = min(1, sqrt(pix / (DW * DH)));
@@ -203,11 +207,21 @@ function resize() {
   for (const t of targets) t.destroy();
   const tMS = tex(AA > 1 ? W : 1, H, HDR, TU.RENDER_ATTACHMENT, { samples: AA }), tDp = tex(W, H, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING, { samples: AA });
   const tRes = tex(W, H, HDR, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
-  targets = [tMS, tDp, tRes];
-  const vRes = tRes.createView();
+  const tRay = tex(W / 2, H / 2, HDR, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING), tRay2 = tex(W / 2, H / 2, HDR, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
+  targets = [tMS, tDp, tRes, tRay, tRay2];
+  const bl = [];
+  for (let i = 0; i < NB; i++) { const t = tex(max(1, W >> (i + 1)), max(1, H >> (i + 1)), HDR, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING); bl.push(t); targets.push(t); }
+  const vRes = tRes.createView(), vDp = tDp.createView(), vRay = tRay.createView(), vRay2 = tRay2.createView(), vBl = bl.map(t => t.createView());
   passScene = { colorAttachments: [{ view: AA > 1 ? tMS.createView() : vRes, resolveTarget: AA > 1 ? vRes : undefined, loadOp: 'clear', storeOp: AA > 1 ? 'discard' : 'store', clearValue: [0, 0, 0, 1] }], depthStencilAttachment: { view: tDp.createView(), depthClearValue: 0, depthLoadOp: 'clear', depthStoreOp: 'store' } };
   passPost = { colorAttachments: [{ view: null, loadOp: 'clear', storeOp: 'store', clearValue: [0, 0, 0, 1] }] };
-  bgPost = device.createBindGroup({ layout: pPost.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubo } }, { binding: 2, resource: vRes }] });
+  passRays = { colorAttachments: [colorAtt(vRay, true)] };
+  passBlur = { colorAttachments: [colorAtt(vRay2, true)] };
+  bgBlur = device.createBindGroup({ layout: pRB.getBindGroupLayout(0), entries: [{ binding: 0, resource: vRay }] });
+  bgRays = device.createBindGroup({ layout: pRays.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubo } }, { binding: 1, resource: sRep }, { binding: 2, resource: sCmp }, { binding: 3, resource: tShadow.createView() }, { binding: 4, resource: tWater.createView() }, { binding: 5, resource: vDp }, { binding: 6, resource: tVol.createView() }, { binding: 7, resource: sClamp }] });
+  bloomPass = []; bloomBG = [];
+  for (let i = 0; i < NB; i++) { bloomPass.push({ colorAttachments: [colorAtt(vBl[i], true)] }); bloomBG.push(blitBG(i ? vBl[i - 1] : vRes)); }
+  for (let i = NB - 1; i > 0; i--) { bloomPass.push({ colorAttachments: [colorAtt(vBl[i - 1], false)] }); bloomBG.push(blitBG(vBl[i])); }
+  bgPost = device.createBindGroup({ layout: pPost.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubo } }, { binding: 1, resource: sClamp }, { binding: 2, resource: vRes }, { binding: 3, resource: vRay2 }, { binding: 4, resource: vBl[0] }, { binding: 5, resource: vDp }] });
   UB[52] = W; UB[53] = H; UB[54] = 1 / W; UB[55] = 1 / H;
 }
 resize(); addEventListener('resize', resize);
@@ -222,7 +236,7 @@ if (hasTS) {
 
 let hud = false;
 let kf = 0, kb = 0, kl = 0, kr = 0, ku = 0, kd = 0, ks = 0, mdx = 0, mdy = 0;
-const TANH = 0.6, NEAR = 0.1, EXPO = 0.62;
+const TANH = 0.6, NEAR = 0.1, EXPO = 0.5;
 const submitList = [null];
 const rowOrd = new Uint8Array(CELLS);
 function drawCells(r, start, lo, hi, mar, minD, maxD) {
@@ -264,14 +278,19 @@ function render() {
   for (let i = 1; i < 5; i++) { r = e.beginRenderPass(waterPass[i]); r.setPipeline(pMip16); r.setBindGroup(0, waterBG[i - 1]); r.draw(3); r.end(); }
   r = e.beginRenderPass(passScene); r.setBindGroup(0, bg0);
   r.setPipeline(pTerrain); r.setVertexBuffer(0, vbTerrain); r.setVertexBuffer(1, ibSolids); r.setIndexBuffer(ibTerrain, 'uint32');
-  drawCells(r, T.start, T.lo, T.hi, 1.5, 0, 240);
-  r.setPipeline(pGlyph); r.setVertexBuffer(0, vbMesh); r.setVertexBuffer(1, ibGlyphB); r.setIndexBuffer(ibMesh, 'uint32');
+  drawCells(r, T.start, T.lo, T.hi, 4, 0, 300);
+  r.setPipeline(pGlyph); r.setVertexBuffer(0, vbMesh); r.setIndexBuffer(ibMesh, 'uint32');
+  r.setVertexBuffer(1, ibPlaqueB); r.drawIndexed(plaqueM.ib.length, 1, plaqueM.i0, plaqueM.v0, 0);
+  r.setVertexBuffer(1, ibGlyphB);
   r.drawIndexed(shellM.ib.length, nGlyph, shellM.i0, shellM.v0, 0);
   r.setPipeline(pWhale); r.setVertexBuffer(1, ibWhaleB);
   r.drawIndexed(whaleM.ib.length, nWhale, whaleM.i0, whaleM.v0, 0);
   r.setPipeline(pSurf); r.draw(4);
   r.setPipeline(pBack); r.draw(4);
   r.end();
+  r = e.beginRenderPass(passRays); r.setPipeline(pRays); r.setBindGroup(0, bgRays); r.draw(3); r.end();
+  r = e.beginRenderPass(passBlur); r.setPipeline(pRB); r.setBindGroup(0, bgBlur); r.draw(3); r.end();
+  for (let i = 0; i < bloomPass.length; i++) { r = e.beginRenderPass(bloomPass[i]); r.setPipeline(i === 0 ? pDown0 : i < NB ? pDown : pUp); r.setBindGroup(0, bloomBG[i]); r.draw(3); r.end(); }
   passPost.colorAttachments[0].view = ctx.getCurrentTexture().createView();
   r = e.beginRenderPass(passPost); r.setPipeline(pPost); r.setBindGroup(0, bgPost); r.draw(3); r.end();
   if (slot) { e.resolveQuerySet(qs, 0, 2, qResolve, 0); e.copyBufferToBuffer(qResolve, 0, slot.b, 0, 16); }

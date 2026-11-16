@@ -1,17 +1,17 @@
 {
-  "date": "2026-11-16T18:36:46.061Z",
+  "date": "2026-11-16T19:09:41.378Z",
   "gpu": "GTX 1080 Ti, Chrome 157, D3D12",
   "url": "http://127.0.0.1:8123/dev.html (AGY build)",
   "viewport": "2560x1440@1",
   "quality": "High",
-  "elapsed_s": 60.2,
+  "elapsed_s": 60.1,
   "canvas_wh": "2560x1440",
-  "devjs_report": "Fly-through 2560x1440, 3959 frames\nframe  avg 15.16  p99 16.10  max 31.00 ms\nGPU    avg 1.84  p99 2.69  max 12.52 ms",
+  "devjs_report": "Fly-through 2560x1440, 3959 frames\nframe  avg 15.16  p99 16.10  max 30.70 ms\nGPU    avg 3.94  p99 5.83  max 15.20 ms",
   "independent_raf": {
-    "n": 3973,
-    "avg": 15.155172413793059,
+    "n": 3965,
+    "avg": 15.159218158890209,
     "p99": 16.099999999998545,
-    "max": 31
+    "max": 30.700000000004366
   },
   "console": [
     "[log] floating specks removed: 13",

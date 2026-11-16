@@ -93,9 +93,24 @@ function makeWorld(D, T) {
   // inscription: 3 copies on the seabed
   const garr = [];
   rseed(42);
-  layInscription(gy, [[-8, -6], [-30, -70], [10, 66]], garr);
+  const centers = [[-8, -6], [-30, -70], [10, 66]];
+  layInscription(gy, centers, garr);
   const glyphs = new Float32Array(garr);
-  return { gy, height, volD, gm, whales, glyphs };
+  const parr = [];
+  for (const c of centers) { const cx = c[0] - 6.6, cz = c[1] - 0.75; parr.push(cx, gy(cx, cz) + 0.05, cz, 1, 0, 0, 0, 0); }
+  const plaques = new Float32Array(parr);
+  // conforming dark sheet under each word (follows seabed)
+  const pm = new Mesh();
+  for (const c of centers) {
+    const base = pm.p.length / 3, NXQ = 17, NZQ = 5;
+    for (let iz = 0; iz < NZQ; iz++) for (let ix = 0; ix < NXQ; ix++) {
+      const x = c[0] - 14 + ix * (15 / (NXQ - 1)), z = c[1] - 2.4 + iz * (3.4 / (NZQ - 1));
+      pm.v(x, gy(x, z) + 0.04, z, 1);
+    }
+    for (let iz = 0; iz < NZQ - 1; iz++) for (let ix = 0; ix < NXQ - 1; ix++) { const a = base + iz * NXQ + ix; pm.quad(a, a + 1, a + 1 + NXQ, a + NXQ); }
+  }
+  const plaqueMesh = pm.build();
+  return { gy, height, volD, gm, whales, glyphs, plaques, plaqueMesh };
 }
 
 // whale mesh: loft body (aux=u longitudinal), fluke lobes (aux~1), pectoral fins (aux<0)
@@ -110,16 +125,25 @@ function meshWhale() {
     rings.push(ring);
   }
   for (let i = 0; i < N; i++) for (let k = 0; k < M; k++) { const k2 = (k + 1) % M; m.quad(rings[i][k], rings[i + 1][k], rings[i + 1][k2], rings[i][k2]); }
-  // fluke lobes (tail at -x), flattened, aux=1 so they wave strongly
+  // fluke lobes (tail at -x), broad flattened lobes, aux=1 so they wave strongly
   for (const s of [-1, 1]) {
-    const pts = []; for (let i = 0; i <= 6; i++) pts.push([-0.5 - i * 0.06, 0, s * i * 0.09]);
-    m.tube(pts, (k) => 0.05 * (1 - k / 8), 5, true, () => 1);
+    const pts = []; for (let i = 0; i <= 4; i++) pts.push([-0.5 - i * 0.04, 0, s * i * 0.16]);
+    m.tube(pts, (k) => 0.13 * (1 - k / 6), 6, true, () => 1);
   }
-  // pectoral fins aux<0 (span)
+  // pectoral fins aux<0 (span), broad flippers
   for (const s of [-1, 1]) {
-    const pts = []; for (let i = 0; i <= 4; i++) pts.push([0.15 - i * 0.05, -0.05, s * (0.12 + i * 0.07)]);
-    m.tube(pts, (k) => 0.03 * (1 - k / 6), 4, true, (k) => -(k / 4));
+    const pts = []; for (let i = 0; i <= 3; i++) pts.push([0.1 - i * 0.04, -0.05, s * (0.16 + i * 0.06)]);
+    m.tube(pts, (k) => 0.07 * (1 - k / 5), 5, true, (k) => -(k / 3));
   }
+  return m.build();
+}
+// dark basalt plaque under each inscription word (contrast underlay)
+function meshPlaque() {
+  const m = new Mesh(), X = 7.4, Y = 0.06, Z = 1.4;
+  const v = [[-X, -Y, -Z], [X, -Y, -Z], [X, -Y, Z], [-X, -Y, Z], [-X, Y, -Z], [X, Y, -Z], [X, Y, Z], [-X, Y, Z]];
+  for (const p of v) m.v(p[0], p[1], p[2], 1);
+  const F = [[4, 5, 6], [4, 6, 7], [0, 2, 1], [0, 3, 2], [0, 1, 5], [0, 5, 4], [2, 3, 7], [2, 7, 6], [1, 2, 6], [1, 6, 5], [3, 0, 4], [3, 4, 7]];
+  for (const f of F) m.tri(f[0], f[1], f[2]);
   return m.build();
 }
 // small shell (octahedron, 8 tris) for inscription pebbles
