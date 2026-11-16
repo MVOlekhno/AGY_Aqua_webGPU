@@ -1,0 +1,51 @@
+<!doctype html>
+<!--
+AGY_Aqua_webGPU — procedural WebGPU aquarium. Implementation written from scratch.
+Techniques derived from Abyssal Garden (https://github.com/Noniv/abyssal-garden),
+Copyright (c) 2026 Maksymilian Dendura, MIT License:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<html lang=ru>
+<head>
+<meta charset=utf-8>
+<title>AGY Aqua</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<style>
+html{background:#03131c}
+body{position:fixed;inset:0;margin:0;overflow:hidden;background:radial-gradient(#0b3a4d,#03131c 70%);font:700 16px/1.4 system-ui,sans-serif;color:#e8fbff}
+canvas{position:absolute;width:100%;height:100%;touch-action:none;cursor:crosshair}
+body:not(.g) canvas{filter:blur(1vmax) brightness(.5)}
+.l canvas{opacity:0}
+#m{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:1em;text-align:center;background:radial-gradient(#03131c00 30%,#03131ccc)}
+.g #m,.m #l,.l #g{opacity:0;visibility:hidden}
+#p{height:.5em;width:20em;max-width:80vw;overflow:hidden;border-radius:.5em;background:#03131c;box-shadow:0 0 0 2px #7ff3ff80}
+#b{display:block;height:100%;background:linear-gradient(90deg,#14a9c4,#9ff6ff);transform:scaleX(0);transform-origin:0}
+#s{letter-spacing:.1em;text-transform:uppercase;font-size:.8em}
+button{padding:.8em 1.6em;border:0;border-radius:.5em;background:linear-gradient(#9ff6ff,#19c3d6);font:800 1em system-ui;letter-spacing:.1em;text-transform:uppercase;color:#03222d;cursor:pointer}
+#i{position:absolute;top:1em;left:1.2em;margin:0;font:.8em/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;text-shadow:0 1px 4px #000;pointer-events:none}
+</style>
+</head>
+<body class=l>
+<canvas id=c></canvas>
+<div id=m>
+  <h1>AGY Aqua</h1>
+  <div id=l><div id=p><i id=b></i></div><p id=s>Diving…</p></div>
+  <div id=g><button id=d>Dive in</button><p>WASD swim · Q/E down/up · Shift faster · 1–6 views · H stats · B bench (dev)</p></div>
+</div>
+<pre id=i></pre>
+<script>
+/*SCRIPT*/
+</script>
+</body>
+</html>

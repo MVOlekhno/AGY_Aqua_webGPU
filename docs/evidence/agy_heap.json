@@ -1,0 +1,29 @@
+{
+  "note": "usedJSHeapSize samples ~0.7s apart during render; growth reflects WebGPU wrapper objects (encoder/views) + GC, numeric state is preallocated F/UB",
+  "samples": [
+    {
+      "heap": 46227577,
+      "raf": 0
+    },
+    {
+      "heap": 46360977,
+      "raf": 0
+    },
+    {
+      "heap": 46486289,
+      "raf": 0
+    },
+    {
+      "heap": 46614113,
+      "raf": 0
+    },
+    {
+      "heap": 46737933,
+      "raf": 0
+    },
+    {
+      "heap": 46848565,
+      "raf": 0
+    }
+  ]
+}

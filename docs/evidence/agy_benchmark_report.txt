@@ -1,0 +1,3 @@
+Fly-through 2560x1440, 3959 frames
+frame  avg 15.16  p99 16.10  max 31.00 ms
+GPU    avg 1.84  p99 2.69  max 12.52 ms

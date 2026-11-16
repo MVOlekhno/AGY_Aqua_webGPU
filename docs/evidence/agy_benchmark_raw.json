@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-16T18:36:46.061Z",
+  "gpu": "GTX 1080 Ti, Chrome 157, D3D12",
+  "url": "http://127.0.0.1:8123/dev.html (AGY build)",
+  "viewport": "2560x1440@1",
+  "quality": "High",
+  "elapsed_s": 60.2,
+  "canvas_wh": "2560x1440",
+  "devjs_report": "Fly-through 2560x1440, 3959 frames\nframe  avg 15.16  p99 16.10  max 31.00 ms\nGPU    avg 1.84  p99 2.69  max 12.52 ms",
+  "independent_raf": {
+    "n": 3973,
+    "avg": 15.155172413793059,
+    "p99": 16.099999999998545,
+    "max": 31
+  },
+  "console": [
+    "[log] floating specks removed: 13",
+    "[log.warning] The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+    "[log.warning] The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+    "[log] floating specks removed: 13"
+  ]
+}
